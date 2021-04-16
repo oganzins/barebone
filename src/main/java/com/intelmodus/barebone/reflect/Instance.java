@@ -18,7 +18,7 @@ public class Instance<T> {
         try {
             return defaultConstructor().newInstance();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new DefaultConstructorNotAvailable(e);
         }
     }
 

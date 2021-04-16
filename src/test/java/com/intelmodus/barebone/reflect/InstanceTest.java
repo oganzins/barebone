@@ -20,8 +20,7 @@ class InstanceTest {
         var instance = Instance.of(DummyWithoutDefaultConstructor.class);
 
         assertThatThrownBy(instance::byDefaultConstructor)
-                .isInstanceOf(RuntimeException.class);
-
+                .isInstanceOf(DefaultConstructorNotAvailable.class);
     }
 
 }
