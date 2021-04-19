@@ -27,7 +27,6 @@ class RestEasyModuleTest {
         assertThat(listener)
                 .isNotNull()
                 .isNotSameAs(createGuiceServerContextListener());
-
     }
 
     @Test
@@ -39,17 +38,9 @@ class RestEasyModuleTest {
                 .isSameAs(createHttpServletDispatcher());
     }
 
-    @Test
-    public void serverDispatcherAtApplicationPath() {
-        var dispatcher = createHttpServletDispatcher();
-
-
-    }
-
     private GuiceResteasyBootstrapServletContextListener createGuiceServerContextListener() {
         return injector.getInstance(GuiceResteasyBootstrapServletContextListener.class);
     }
-
 
     private HttpServletDispatcher createHttpServletDispatcher() {
         return injector.getInstance(HttpServletDispatcher.class);
