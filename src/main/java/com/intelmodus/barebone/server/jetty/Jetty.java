@@ -1,61 +1,57 @@
 package com.intelmodus.barebone.server.jetty;
 
 import com.google.inject.assistedinject.Assisted;
-import com.google.inject.servlet.GuiceFilter;
 import com.intelmodus.barebone.config.BareboneConfiguration;
+import com.intelmodus.barebone.server.ServerStartupFailed;
 import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.server.handler.HandlerCollection;
-import org.eclipse.jetty.servlet.DefaultServlet;
-import org.eclipse.jetty.servlet.FilterHolder;
-import org.eclipse.jetty.servlet.ServletContextHandler;
-import org.eclipse.jetty.servlet.ServletHolder;
 
 import javax.inject.Inject;
-import javax.servlet.DispatcherType;
-import java.util.EnumSet;
 
 public class Jetty implements com.intelmodus.barebone.server.Server {
 
-    private static final String CONTEXT_ROOT = "/";
-
     private final BareboneConfiguration configuration;
-    private final GuiceFilter filter;
     private final EventListenerScanner eventListenerScanner;
     private final HandlerScanner handlerScanner;
+    private final JettyServerFactory jettyServerFactory;
+    private ServletContextFactory servletContextFactory;
 
     @Inject
-    Jetty(@Assisted BareboneConfiguration configuration, GuiceFilter filter, EventListenerScanner eventListenerScanner, HandlerScanner handlerScanner) {
+    Jetty(@Assisted BareboneConfiguration configuration,
+          EventListenerScanner eventListenerScanner,
+          HandlerScanner handlerScanner,
+          JettyServerFactory jettyServerFactory,
+          ServletContextFactory servletContextFactory) {
         this.configuration = configuration;
-        this.filter = filter;
         this.eventListenerScanner = eventListenerScanner;
         this.handlerScanner = handlerScanner;
+        this.jettyServerFactory = jettyServerFactory;
+        this.servletContextFactory = servletContextFactory;
     }
 
     public void start() {
         try {
-            var server = new Server(configuration.portNumber());
-            var filterHolder = new FilterHolder(filter);
-
-            var context = new ServletContextHandler(server, CONTEXT_ROOT);
-            context.addFilter(filterHolder, configuration.applicationPath() + "/*", NonSpecifiedDispatcherType());
-
-            var servlet = new ServletHolder(new DefaultServlet());
-            context.addServlet(servlet, CONTEXT_ROOT);
-
-            eventListenerScanner.accept(context::addEventListener);
-
-            var handlers = new HandlerCollection();
-            handlers.addHandler(server.getHandler());
-            handlerScanner.accept(handlers::addHandler);
-            server.setHandler(handlers);
+            var server = createServer();
             server.start();
             server.join();
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            throw new ServerStartupFailed(e);
         }
     }
 
-    private EnumSet<DispatcherType> NonSpecifiedDispatcherType() {
-        return EnumSet.noneOf(DispatcherType.class);
+    private Server createServer() {
+        var server = jettyServerFactory.create(configuration);
+        var context = servletContextFactory.create(server, configuration);
+        eventListenerScanner.accept(context::addEventListener);
+        var handlers = handlersOf(server);
+        handlerScanner.accept(handlers::addHandler);
+        server.setHandler(handlers);
+        return server;
+    }
+
+    private HandlerCollection handlersOf(Server server) {
+        var handlers = new HandlerCollection();
+        handlers.addHandler(server.getHandler());
+        return handlers;
     }
 }
